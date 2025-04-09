@@ -21,7 +21,7 @@ final class SearchGroundingTests: XCTestCase {
     let text = "test-text"
     let chunk = "test-chunk"
     
-    func testEncode_allFieldsIncluded() throws {
+    func testDecode_allFieldsIncluded() throws {
         let content = try ModelContent(role: role, answer)
         let segment = ContentSegment(
             partIndex: 0,
@@ -215,6 +215,222 @@ final class SearchGroundingTests: XCTestCase {
           },
           "modelVersion": "gemini-2.0-flash"
         }    
+        """
+        
+        let jsonData = try XCTUnwrap(json.data(using: .utf8))
+        let decodedResponse = try decoder.decode(GenerateContentResponse.self, from: jsonData)
+        
+        XCTAssertEqual(decodedResponse, response)
+    }
+    
+    func testDecode_requiredFieldsOnly() throws {
+        let content = try ModelContent(role: role, answer)
+        let segment = ContentSegment(
+            partIndex: nil,
+            startIndex: nil,
+            endIndex: 13,
+            text: text
+        )
+        
+        let response = GenerateContentResponse(
+            candidates: [
+                CandidateResponse(
+                    content: content,
+                    safetyRatings: [],
+                    finishReason: .safety,
+                    citationMetadata: CitationMetadata(
+                        citationSources: [
+                            Citation(
+                                startIndex: 2,
+                                endIndex: 13,
+                                uri: uri,
+                                license: "CC0"
+                            )
+                        ]
+                    ),
+                    groundingAttributions: [
+                        GroundingAttribution(
+                            sourceId: .unknown,
+                            content: content
+                        )
+                    ],
+                    groundingMetadata: GroundingMetadata(
+                        groundingChunks: [
+                            GroundingMetadata.GroundingChunk.web(.init(uri: uri, title: text))
+                        ],
+                        groundingSupports: [
+                            GroundingMetadata.GroundingSupport(
+                                groundingChunkIndices: [0],
+                                confidenceScores: [1],
+                                segment: segment
+                            )
+                        ],
+                        webSearchQueries: [],
+                        retrievalMetadata: GroundingMetadata.RetrievalMetadata(googleSearchDynamicRetrievalScore: nil)
+                    )
+                )
+            ],
+            usageMetadata: GenerateContentResponse.UsageMetadata(
+                promptTokenCount: promptTokens,
+                candidatesTokenCount: candidatesTokens,
+                totalTokenCount: promptTokens + candidatesTokens
+            )
+        )
+        
+        let json = """
+        {
+          "candidates": [
+            {
+              "content": {
+                "parts": [
+                  {
+                    "text": "\(answer)"
+                  }
+                ],
+                "role": "\(role)"
+              },
+              "finishReason": "SAFETY",
+              "safetyRatings": [],
+              "citationMetadata": {
+                "citationSources": [
+                  {
+                    "startIndex": 2,
+                    "endIndex": 13,
+                    "uri": "\(uri)",
+                    "license": "CC0"
+                  }
+                ]
+              },
+              "groundingAttributions": [
+                {
+                  "sourceId": {
+                    "coolNewIdentifier": {
+                      "withABunch": "\(id)",
+                      "ofOtherStuff": "WOW!"
+                    }
+                  },
+                  "content": {
+                    "parts": [
+                      {
+                        "text": "\(answer)"
+                      }
+                    ],
+                    "role": "\(role)"
+                  }
+                }
+              ],
+              "groundingMetadata": {
+                "groundingChunks": [
+                  {
+                    "web": {
+                      "uri": "\(uri)",
+                      "title": "\(text)"
+                    }
+                  }
+                ],
+                "groundingSupports": [
+                  {
+                    "segment": {
+                      "endIndex": 13,
+                      "text": "\(text)"
+                    },
+                    "groundingChunkIndices": [
+                      0
+                    ],
+                    "confidenceScores": [
+                      1
+                    ]
+                  }
+                ],
+                "retrievalMetadata": {
+                  
+                },
+                "webSearchQueries": []
+              }
+            }
+          ],
+          "usageMetadata": {
+            "promptTokenCount": \(promptTokens),
+            "candidatesTokenCount": \(candidatesTokens),
+            "totalTokenCount": \(promptTokens + candidatesTokens),
+            "promptTokensDetails": [
+              {
+                "modality": "TEXT",
+                "tokenCount": \(promptTokens)
+              }
+            ],
+            "candidatesTokensDetails": [
+              {
+                "modality": "TEXT",
+                "tokenCount": \(candidatesTokens)
+              }
+            ]
+          },
+          "modelVersion": "gemini-2.0-flash"
+        }
+        """
+        
+        let jsonData = try XCTUnwrap(json.data(using: .utf8))
+        let decodedResponse = try decoder.decode(GenerateContentResponse.self, from: jsonData)
+        
+        XCTAssertEqual(decodedResponse, response)
+    }
+    
+    func testDecode_noSearchGrounding() throws {
+        let content = try ModelContent(role: role, answer)
+        
+        let response = GenerateContentResponse(
+            candidates: [
+                CandidateResponse(
+                    content: content,
+                    safetyRatings: [],
+                    finishReason: .stop,
+                    citationMetadata: nil,
+                    groundingAttributions: [],
+                    groundingMetadata: nil
+                )
+            ],
+            usageMetadata: GenerateContentResponse.UsageMetadata(
+                promptTokenCount: promptTokens,
+                candidatesTokenCount: candidatesTokens,
+                totalTokenCount: promptTokens + candidatesTokens
+            )
+        )
+        
+        let json = """
+        {
+          "candidates": [
+            {
+              "content": {
+                "parts": [
+                  {
+                    "text": "\(answer)"
+                  }
+                ],
+                "role": "\(role)"
+              },
+              "finishReason": "STOP",
+            }
+          ],
+          "usageMetadata": {
+            "promptTokenCount": \(promptTokens),
+            "candidatesTokenCount": \(candidatesTokens),
+            "totalTokenCount": \(promptTokens + candidatesTokens),
+            "promptTokensDetails": [
+              {
+                "modality": "TEXT",
+                "tokenCount": \(promptTokens)
+              }
+            ],
+            "candidatesTokensDetails": [
+              {
+                "modality": "TEXT",
+                "tokenCount": \(candidatesTokens)
+              }
+            ]
+          },
+          "modelVersion": "gemini-2.0-flash"
+        }
         """
         
         let jsonData = try XCTUnwrap(json.data(using: .utf8))

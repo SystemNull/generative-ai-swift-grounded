@@ -126,10 +126,10 @@ public struct ModelContent: Equatable {
 @available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
 public struct ContentSegment {
     /// The index of a Part object within its parent Content object.
-    public let partIndex: Int
+    public let partIndex: Int?
     
     /// The start index in the given Part, measured in bytes. Offset from the start of the Part, inclusive, starting at zero.
-    public let startIndex: Int
+    public let startIndex: Int?
     
     /// The end index in the given Part, measured in bytes. Offset from the start of the Part, exclusive, starting at zero.
     public let endIndex: Int
@@ -226,7 +226,22 @@ extension ModelContent.Part: Codable {
 }
 
 @available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
-extension ContentSegment: Codable {}
+extension ContentSegment: Codable {
+    enum CodingKeys: CodingKey {
+        case partIndex
+        case startIndex
+        case endIndex
+        case text
+    }
+    
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.partIndex = try container.decodeIfPresent(Int.self, forKey: .partIndex)
+        self.startIndex = try container.decodeIfPresent(Int.self, forKey: .startIndex)
+        self.endIndex = try container.decode(Int.self, forKey: .endIndex)
+        self.text = try container.decode(String.self, forKey: .text)
+    }
+}
 
 // MARK: Equatable Conformance
 
