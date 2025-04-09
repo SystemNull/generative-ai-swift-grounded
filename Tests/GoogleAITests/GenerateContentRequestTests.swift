@@ -51,6 +51,7 @@ final class GenerateContentRequestTests: XCTestCase {
           ),
         ]),
         Tool(codeExecution: CodeExecution()),
+        Tool(googleSearch: GoogleSearch()),
       ],
       toolConfig: ToolConfig(functionCallingConfig: FunctionCallingConfig(mode: .auto)),
       systemInstruction: ModelContent(role: "system", parts: "test-system-instruction"),
@@ -111,6 +112,11 @@ final class GenerateContentRequestTests: XCTestCase {
         {
           "codeExecution" : {
 
+          }
+        },
+        {
+          "googleSearch" : {
+    
           }
         }
       ]

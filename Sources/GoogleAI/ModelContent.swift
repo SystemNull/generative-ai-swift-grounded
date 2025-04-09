@@ -122,6 +122,22 @@ public struct ModelContent: Equatable {
   }
 }
 
+/// A segment of the content.
+@available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
+public struct ContentSegment {
+    /// The index of a Part object within its parent Content object.
+    public let partIndex: Int
+    
+    /// The start index in the given Part, measured in bytes. Offset from the start of the Part, inclusive, starting at zero.
+    public let startIndex: Int
+    
+    /// The end index in the given Part, measured in bytes. Offset from the start of the Part, exclusive, starting at zero.
+    public let endIndex: Int
+    
+    /// The text corresponding to the segment from the response.
+    public let text: String
+}
+
 // MARK: Codable Conformances
 
 @available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
@@ -208,3 +224,11 @@ extension ModelContent.Part: Codable {
     }
   }
 }
+
+@available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
+extension ContentSegment: Codable {}
+
+// MARK: Equatable Conformance
+
+@available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
+extension ContentSegment: Equatable {}

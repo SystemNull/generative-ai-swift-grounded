@@ -33,7 +33,9 @@ final class GenerateContentResponseTests: XCTestCase {
       content: ModelContent(role: "model", parts: parts),
       safetyRatings: [],
       finishReason: nil,
-      citationMetadata: nil
+      citationMetadata: nil,
+      groundingAttributions: [],
+      groundingMetadata: nil
     )
     let response = GenerateContentResponse(candidates: [candidate])
 
@@ -48,7 +50,9 @@ final class GenerateContentResponseTests: XCTestCase {
       content: ModelContent(role: "model", parts: parts),
       safetyRatings: [],
       finishReason: nil,
-      citationMetadata: nil
+      citationMetadata: nil,
+      groundingAttributions: [],
+      groundingMetadata: nil
     )
     let response = GenerateContentResponse(candidates: [candidate])
 
@@ -69,7 +73,9 @@ final class GenerateContentResponseTests: XCTestCase {
       content: ModelContent(role: "model", parts: parts),
       safetyRatings: [],
       finishReason: nil,
-      citationMetadata: nil
+      citationMetadata: nil,
+      groundingAttributions: [],
+      groundingMetadata: nil
     )
     let response = GenerateContentResponse(candidates: [candidate])
 
@@ -91,7 +97,9 @@ final class GenerateContentResponseTests: XCTestCase {
       content: ModelContent(role: "model", parts: parts),
       safetyRatings: [],
       finishReason: nil,
-      citationMetadata: nil
+      citationMetadata: nil,
+      groundingAttributions: [],
+      groundingMetadata: nil
     )
     let response = GenerateContentResponse(candidates: [candidate])
 
@@ -113,7 +121,9 @@ final class GenerateContentResponseTests: XCTestCase {
       content: ModelContent(role: "model", parts: parts),
       safetyRatings: [],
       finishReason: nil,
-      citationMetadata: nil
+      citationMetadata: nil,
+      groundingAttributions: [],
+      groundingMetadata: nil
     )
     let response = GenerateContentResponse(candidates: [candidate])
 
@@ -135,7 +145,9 @@ final class GenerateContentResponseTests: XCTestCase {
       content: ModelContent(role: "model", parts: parts),
       safetyRatings: [],
       finishReason: nil,
-      citationMetadata: nil
+      citationMetadata: nil,
+      groundingAttributions: [],
+      groundingMetadata: nil
     )
     let response = GenerateContentResponse(candidates: [candidate])
 
@@ -153,7 +165,9 @@ final class GenerateContentResponseTests: XCTestCase {
       content: ModelContent(role: "model", parts: parts),
       safetyRatings: [],
       finishReason: nil,
-      citationMetadata: nil
+      citationMetadata: nil,
+      groundingAttributions: [],
+      groundingMetadata: nil
     )
     let response = GenerateContentResponse(candidates: [candidate])
 

@@ -111,14 +111,22 @@ public struct CandidateResponse {
 
   /// Cited works in the model's response content, if it exists.
   public let citationMetadata: CitationMetadata?
+  
+  /// The attribution information for sources that contributed to a grounded answer.
+  public let groundingAttributions: [GroundingAttribution]
 
+  /// The grounding metadata for the candidate.
+  public let groundingMetadata: GroundingMetadata?
+    
   /// Initializer for SwiftUI previews or tests.
   public init(content: ModelContent, safetyRatings: [SafetyRating], finishReason: FinishReason?,
-              citationMetadata: CitationMetadata?) {
+              citationMetadata: CitationMetadata?, groundingAttributions: [GroundingAttribution], groundingMetadata: GroundingMetadata?) {
     self.content = content
     self.safetyRatings = safetyRatings
     self.finishReason = finishReason
     self.citationMetadata = citationMetadata
+    self.groundingAttributions = groundingAttributions
+    self.groundingMetadata = groundingMetadata
   }
 }
 
@@ -127,6 +135,96 @@ public struct CandidateResponse {
 public struct CitationMetadata {
   /// A list of individual cited sources and the parts of the content to which they apply.
   public let citationSources: [Citation]
+}
+
+/// The attribution for a source that contributed to an answer.
+@available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
+public struct GroundingAttribution {
+    /// An identifier for the source contributing to this attribution.
+    public let sourceId: AttributionSourceId
+    
+    /// The grounding source content that makes up this attribution.
+    public let content: ModelContent
+}
+
+/// An identifier for the source contributing to this attribution.
+@available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
+public enum AttributionSourceId {
+    /// An identifier for an inline passage.
+    case groundingPassageId(GroundingPassage)
+    
+    /// An identifier for a Chunk fetched via Semantic Retriever.
+    case semanticRetrieverChunk(SemanticRetrieverChunk)
+    
+    /// An unknown AttributionSourceID.
+    case unknown
+    
+    /// An identifier for a part within a GroundingPassage.
+    public struct GroundingPassage {
+        /// The ID of the passage matching the GenerateAnswerRequest's GroundingPassage.id.
+        public let passageId: String
+        
+        /// The index of the part within the GenerateAnswerRequest's GroundingPassage.content.
+        public let partIndex: Int
+    }
+
+    /// An identifier for a Chunk retrieved via Semantic Retriever specified in the GenerateAnswerRequest using SemanticRetrieverConfig.
+    public struct SemanticRetrieverChunk {
+        /// The name of the source matching the request's SemanticRetrieverConfig.source.
+        public let source: String
+        
+        /// The name of the Chunk containing the attributed text.
+        public let chunk: String
+    }
+}
+
+/// The metadata returned to client when grounding is enabled.
+@available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
+public struct GroundingMetadata {
+    /// A list of supporting references retrieved from specified grounding source.
+    public let groundingChunks: [GroundingChunk]
+    
+    /// A list of grounding support.
+    public let groundingSupports: [GroundingSupport]
+    
+    /// The web search queries for the following-up web search.
+    public let webSearchQueries: [String]
+    
+    /// The metadata related to retrieval in the grounding flow.
+    public let retrievalMetadata: RetrievalMetadata
+    
+    /// A grounding chunk.
+    public enum GroundingChunk {
+        /// A grounding chunk from the web.
+        case web(Web)
+        
+        /// A chunk from the web.
+        public struct Web {
+            /// The URI reference of the chunk.
+            public let uri: String
+            
+            /// The title of the chunk.
+            public let title: String
+        }
+    }
+    
+    /// A grounding support.
+    public struct GroundingSupport {
+        /// A list of indices (into 'groundingChunk') specifying the citations associated with the claim. For instance [1,3,4] means that groundingChunk[1], groundingChunk[3], groundingChunk[4] are the retrieved content attributed to the claim.
+        public let groundingChunkIndices: [Int]
+        
+        /// The confidence scores of the support references. Ranges from 0 to 1. 1 is the most confident. This list must have the same size as the groundingChunkIndices.
+        public let confidenceScores: [Float]
+        
+        /// A segment of the content this support belongs to.
+        public let segment: ContentSegment
+    }
+    
+    /// The metadata related to retrieval in the grounding flow.
+    public struct RetrievalMetadata {
+        /// Score indicating how likely information from google search could help answer the prompt. The score is in the range [0, 1], where 0 is the least likely and 1 is the most likely. This score is only populated when google search grounding and dynamic retrieval is enabled. It will be compared to the threshold to determine whether to trigger google search.
+        public let googleSearchDynamicRetrievalScore: Float?
+    }
 }
 
 /// A struct describing a source attribution.
@@ -262,6 +360,8 @@ extension CandidateResponse: Decodable {
     case finishReason
     case finishMessage
     case citationMetadata
+    case groundingAttributions
+    case groundingMetadata
   }
 
   public init(from decoder: Decoder) throws {
@@ -298,11 +398,82 @@ extension CandidateResponse: Decodable {
       CitationMetadata.self,
       forKey: .citationMetadata
     )
+      
+    if let groundingAttributions = try container.decodeIfPresent([GroundingAttribution].self, forKey: .groundingAttributions) {
+      self.groundingAttributions = groundingAttributions
+    } else {
+      self.groundingAttributions = []
+    }
+      
+    groundingMetadata = try container.decodeIfPresent(GroundingMetadata.self, forKey: .groundingMetadata)
   }
 }
 
 @available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
 extension CitationMetadata: Decodable {}
+
+@available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
+extension GroundingAttribution: Decodable {}
+
+@available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
+extension AttributionSourceId: Decodable {
+    enum CodingKeys: CodingKey {
+        case groundingPassageId
+        case semanticRetrieverChunk
+    }
+    
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        if let groundingPassage = try container.decodeIfPresent(GroundingPassage.self, forKey: .groundingPassageId) {
+            self = .groundingPassageId(groundingPassage)
+        } else if let semanticRetrieverChunk = try container.decodeIfPresent(SemanticRetrieverChunk.self, forKey: .semanticRetrieverChunk) {
+            self = .semanticRetrieverChunk(semanticRetrieverChunk)
+        } else {
+            Logging.default.error("[GoogleGenerativeAI] AttributionSourceID is neither a GroundingPassageId nor a SemanticRetrieverChunk.")
+            self = .unknown
+        }
+    }
+}
+
+@available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
+extension AttributionSourceId.GroundingPassage: Decodable {}
+
+@available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
+extension AttributionSourceId.SemanticRetrieverChunk: Decodable {}
+
+@available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
+extension GroundingMetadata: Decodable {}
+
+@available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
+extension GroundingMetadata.GroundingChunk: Decodable {
+    enum CodingKeys: CodingKey {
+        case web
+    }
+    
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self = .web(try container.decode(Web.self, forKey: .web))
+    }
+}
+
+@available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
+extension GroundingMetadata.GroundingChunk.Web: Decodable {}
+
+@available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
+extension GroundingMetadata.GroundingSupport: Decodable {}
+
+@available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
+extension GroundingMetadata.RetrievalMetadata: Decodable {
+    enum CodingKeys: CodingKey {
+        case googleSearchDynamicRetrievalScore
+    }
+    
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        googleSearchDynamicRetrievalScore = try container.decodeIfPresent(Float.self, forKey: .googleSearchDynamicRetrievalScore)
+    }
+}
 
 @available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
 extension Citation: Decodable {
@@ -380,3 +551,56 @@ extension PromptFeedback: Decodable {
     }
   }
 }
+
+// MARK: Equatable Conformance
+
+@available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
+extension GenerateContentResponse: Equatable {}
+
+@available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
+extension GenerateContentResponse.UsageMetadata: Equatable {}
+
+@available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
+extension CandidateResponse: Equatable {}
+
+@available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
+extension CitationMetadata: Equatable {}
+
+@available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
+extension GroundingAttribution: Equatable {}
+
+@available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
+extension AttributionSourceId: Equatable {}
+
+@available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
+extension AttributionSourceId.GroundingPassage: Equatable {}
+
+@available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
+extension AttributionSourceId.SemanticRetrieverChunk: Equatable {}
+
+@available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
+extension GroundingMetadata: Equatable {}
+
+@available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
+extension GroundingMetadata.GroundingChunk: Equatable {}
+
+@available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
+extension GroundingMetadata.GroundingChunk.Web: Equatable {}
+
+@available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
+extension GroundingMetadata.GroundingSupport: Equatable {}
+
+@available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
+extension GroundingMetadata.RetrievalMetadata: Equatable {}
+
+@available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
+extension Citation: Equatable {}
+
+@available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
+extension FinishReason: Equatable {}
+
+@available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
+extension PromptFeedback.BlockReason: Equatable {}
+
+@available(iOS 15.0, macOS 11.0, macCatalyst 15.0, *)
+extension PromptFeedback: Equatable {}
